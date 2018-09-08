@@ -1,11 +1,14 @@
 ---
-- hosts: all
+- hosts: local,jenkins
   become: true
   become_method: sudo
   vars:
     jenkins:
       key_url: https://pkg.jenkins.io/debian/jenkins.io.key
       repo: deb http://pkg.jenkins.io/debian-stable binary/
+      user: jenkins
+      group: jenkins
+      uid: 1040
     ansible:
       key_server: keyserver.ubuntu.com 
       key_id: 93C4A3FD7BB9C367
@@ -73,3 +76,23 @@
         name: ansible
         state: present
         update_cache: yes
+
+    #############################
+    # Add Jenkins user to hosts #
+    #############################
+    
+- hosts: all
+  become: true
+  become_method: sudo
+  tasks:
+
+    - name: Ensure group jenkins exists
+      group:
+        name: "{{ jenkins.user }}"
+        state: present
+
+    - name: Add Jenkins user to all hosts
+    user:
+      name: "{{ jenkins.user }}"
+      uid: "{{ jenkins.uid }}"
+      group: "{{ jenkins.group }}"
