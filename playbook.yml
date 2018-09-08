@@ -92,7 +92,7 @@
         state: present
 
     - name: Add Jenkins user to all hosts
-    user:
-      name: "{{ jenkins.user }}"
-      uid: "{{ jenkins.uid }}"
-      group: "{{ jenkins.group }}"
+      user:
+        name: "{{ jenkins.user }}"
+        uid: "{{ jenkins.uid }}"
+        group: "{{ jenkins.group }}"
