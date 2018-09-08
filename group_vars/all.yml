@@ -1,0 +1,10 @@
+---
+jenkins:
+  key_url: https://pkg.jenkins.io/debian/jenkins.io.key
+  repo: deb http://pkg.jenkins.io/debian-stable binary/
+  user: jenkins
+  group: jenkins
+  uid: 1040
+ansible:
+  key_server: keyserver.ubuntu.com 
+  key_id: 93C4A3FD7BB9C367
