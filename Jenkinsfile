@@ -23,6 +23,7 @@ node('master') {
                     playbook: 'playbook.yml',
                     inventory: 'inventory.ini',
                     limit: 'local',
+                    credentialsId: 'a0b6cf88-24c6-4107-86a5-1b65f0f14387',
                     colorized: true)
             }
         }
