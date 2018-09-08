@@ -22,6 +22,7 @@ node('master') {
                 ansiblePlaybook(
                     playbook: 'playbook.yml',
                     inventory: 'inventory.ini',
+                    limit: 'local',
                     colorized: true)
             }
         }
