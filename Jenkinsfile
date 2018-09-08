@@ -18,15 +18,12 @@ node('master') {
 
         stage('deploy') {
             sh "echo 'WE ARE DEPLOYING'"
-            wrap([$class: 'AnsiColorBuildWrapper', colorMapName: "xterm"]) {
-                ansibleplaybook
-                    colorized: true,
-                    forks: 10,
+            ansiColor('xterm') {
+                ansiblePlaybook(
+                    playbook: 'playbook.yml',
                     inventory: 'inventory.ini',
-                    limit: '',
-                    playbook: 'postgres_rds.yml',
-                    sudouser: null
- 
+                    # credentialsId: 'sample-ssh-key',
+                    colorized: true)
             }
         }
 
