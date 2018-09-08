@@ -22,7 +22,6 @@ node('master') {
                 ansiblePlaybook(
                     playbook: 'playbook.yml',
                     inventory: 'inventory.ini',
-                    # credentialsId: 'sample-ssh-key',
                     colorized: true)
             }
         }
