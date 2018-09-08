@@ -1,0 +1,18 @@
+---
+#############################
+# Add Jenkins user to hosts #
+#############################
+- name: Ensure group jenkins exists
+  group:
+    name: "{{ jenkins.user }}"
+    state: present
+  tags:
+    - cluster
+
+- name: Add Jenkins user to all hosts
+  user:
+    name: "{{ jenkins.user }}"
+    uid: "{{ jenkins.uid }}"
+    group: "{{ jenkins.group }}"
+  tags:
+    - cluster

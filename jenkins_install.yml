@@ -1,0 +1,74 @@
+---
+###################
+# Install Jenkins #
+###################
+
+- name: Install java8
+  apt:
+    name: openjdk-8-jre
+    state: present
+  tags:
+    - java
+
+- name: Add apt signing key for Jenkins
+  apt_key:
+    url: "{{ jenkins.key_url }}"
+    state: present
+  tags:
+    - jenkins
+
+- name: Add apt repository for Jenkins
+  apt_repository:
+    repo: "{{ jenkins.repo }}"
+    state: present
+  tags:
+    - jenkins
+
+- name: Install Jenkins
+  apt:
+    name: jenkins
+    state: present
+    update_cache: yes
+  tags:
+    - jenkins
+
+#     - name: Cat password to debug
+#       debug:
+#         msg: /var/lib/jenkins/secrets/initialAdminPassword
+
+#     - name: Cat admin pass
+#       command: "cat /var/lib/jenkins/secrets/initialAdminPassword"
+#       register: admin_pass
+
+#     - name: Display admin pass
+#       debug: msg={{ admin_pass.stdout }}
+#       when: admin_pass
+
+###################
+# Install ansible #
+###################
+
+# apt-add-repository "deb http://ppa.launchpad.net/ansible/ansible/ubuntu bionic main"
+
+- name: Add apt signing key for Ansible
+  apt_key:
+    keyserver: "{{ ansible.key_server }}"
+    id: "{{ ansible.key_id }}"
+    state: present
+  tags:
+    - ansible
+
+- name: Enable Ansible repository
+  apt_repository:
+    repo: "deb http://ppa.launchpad.net/ansible/ansible/ubuntu {{ ansible_distribution_release }} main"
+    state: present
+  tags:
+    - ansible
+
+- name: Install Ansible
+  apt:
+    name: ansible
+    state: present
+    update_cache: yes
+  tags:
+    - ansible
