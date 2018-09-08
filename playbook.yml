@@ -4,10 +4,17 @@
   become_method: sudo
   vars:
     jenkins:
-      key: https://pkg.jenkins.io/debian/jenkins.io.key
+      key_url: https://pkg.jenkins.io/debian/jenkins.io.key
       repo: deb http://pkg.jenkins.io/debian-stable binary/
+    ansible:
+      key_server: keyserver.ubuntu.com 
+      key_id: 93C4A3FD7BB9C367
 
   tasks:
+
+    ###################
+    # Install Jenkins #
+    ###################
 
     - name: Install java8
       apt:
@@ -18,7 +25,7 @@
 
     - name: Add apt signing key for Jenkins
       apt_key:
-        url: "{{ jenkins.key }}"
+        url: "{{ jenkins.key_url }}"
         state: present
 
     - name: Add apt repository for Jenkins
@@ -29,15 +36,40 @@
     - name: Install Jenkins
       apt:
         name: jenkins
+        state: present
         update_cache: yes
 
-    - name: Cat password to debug
-      debug:
-        msg: /var/lib/jenkins/secrets/initialAdminPassword
+#     - name: Cat password to debug
+#       debug:
+#         msg: /var/lib/jenkins/secrets/initialAdminPassword
 
-    - name: Cat admin pass
-      command: "cat /var/lib/jenkins/secrets/initialAdminPassword"
-      register: admin_pass
+#     - name: Cat admin pass
+#       command: "cat /var/lib/jenkins/secrets/initialAdminPassword"
+#       register: admin_pass
 
-    - name: Display admin pass
-      debug: msg={{ admin_pass.stdout }}
+#     - name: Display admin pass
+#       debug: msg={{ admin_pass.stdout }}
+#       when: admin_pass
+
+    ###################
+    # Install ansible #
+    ###################
+    
+    # apt-add-repository "deb http://ppa.launchpad.net/ansible/ansible/ubuntu bionic main"
+
+    - name: Add apt signing key for Ansible
+      apt_key:
+        keyserver: "{{ ansible.key_server }}"
+        id: "{{ ansible.key_id }}"
+        state: present
+
+    - name: Enable Ansible repository
+      apt_repository:
+        repo: "deb http://ppa.launchpad.net/ansible/ansible/ubuntu {{ ansible_distribution_release }} main"
+        state: present
+
+    - name: Install Ansible
+      apt:
+        name: ansible
+        state: present
+        update_cache: yes
