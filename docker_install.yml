@@ -1,0 +1,27 @@
+---
+###################
+# Install Docker #
+###################
+
+- name: Add apt signing key for Docker
+  apt_key:
+    url: "{{ docker.key_url }}"
+    state: present
+  tags:
+    - docker
+
+- name: Add apt repository for Docker
+  apt_repository:
+    repo: "{{ docker.repo }}"
+    state: present
+    filename: docker
+  tags:
+    - docker
+
+- name: Install Docker
+  apt:
+    name: docker-ce
+    state: present
+    update_cache: yes
+  tags:
+    - docker

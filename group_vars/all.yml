@@ -8,3 +8,7 @@ jenkins:
 ansible:
   key_server: keyserver.ubuntu.com 
   key_id: 93C4A3FD7BB9C367
+  repo: "deb http://ppa.launchpad.net/ansible/ansible/{{ ansible_distribution }} {{ ansible_distribution_release }} main"
+docker:
+  key_url: https://download.docker.com/linux/ubuntu/gpg
+  repo: "deb [arch=armhf] https://download.docker.com/linux/{{ ansible_distribution|lower }} {{ ansible_distribution_release }} stable"

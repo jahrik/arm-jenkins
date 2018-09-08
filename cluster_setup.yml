@@ -16,3 +16,11 @@
     group: "{{ jenkins.group }}"
   tags:
     - cluster
+
+- name: Enable passwordless sudo for jenkins user
+  template:
+    src: sudoers.j2
+    dest: "/etc/sudoers.d/{{ jenkins.user }}"
+    validate: '/usr/sbin/visudo -cf %s'
+  tags:
+    - cluster

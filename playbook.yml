@@ -3,16 +3,33 @@
   become: true
   become_method: sudo
   tasks:
+
     - name: Install Jenkins
       include_tasks: jenkins_install.yml
       tags:
         - jenkins
 
+    - name: Install Ansible
+      include_tasks: ansible_install.yml
+      tags:
+        - ansible
+
 - hosts: cluster
   become: true
   become_method: sudo
   tasks:
+
     - name: Setup Hosts in cluster
       include_tasks: cluster_setup.yml
       tags:
         - cluster
+
+- hosts: docker
+  become: true
+  become_method: sudo
+  tasks:
+
+    - name: Install docker
+      include_tasks: docker_install.yml
+      tags:
+        - docker
