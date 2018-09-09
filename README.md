@@ -15,11 +15,50 @@ Not included in this repo, but a main part of what this Jenkins node will be con
 
 ## OS install
 
-Install ubuntu 18.04 on the Renegade.
+Install ubuntu 18.04 on the Renegade from the Armbian project repos
 * https://www.armbian.com/renegade/
 
 ## Jenkins Install
 
+Initialize an inventory.ini file.  My hosts are as follows:
+
+
+| HOST | purpose |
+| rocks | jenkins |
+| bebop | pihole |
+| venus | swarm,gluster |
+| ninja | swarm,gluster |
+| oroku | swarm,gluster |
+
+[*inventory.ini*](https://gitlab.com/jahrik/arm-jenkins/blob/master/inventory.ini)
+
+    [jenkins]
+    rocks
+
+    # [local]
+    # rocks ansible_connection=local
+
+    [cluster]
+    bebop
+    venus
+    ninja
+    oroku
+
+    [docker]
+    rocks
+    bebop
+    venus
+    ninja
+    oroku
+
+### Install java
+
+    - name: Install java8
+      apt:
+        name: openjdk-8-jre
+        state: present
+      tags:
+        - java
 
 ## Jenkins Plugins
 * Ansible
@@ -30,3 +69,44 @@ Install ubuntu 18.04 on the Renegade.
 ## Ansible
 
 ## Docker
+
+- name: Install java8
+  apt:
+    name: openjdk-8-jre
+    state: present
+  tags:
+    - java
+
+- name: Add apt signing key for Jenkins
+  apt_key:
+    url: "{{ jenkins.key_url }}"
+    state: present
+  tags:
+    - jenkins
+
+- name: Add apt repository for Jenkins
+  apt_repository:
+    repo: "{{ jenkins.repo }}"
+    state: present
+  tags:
+    - jenkins
+
+- name: Install Jenkins
+  apt:
+    name: jenkins
+    state: present
+    update_cache: yes
+  tags:
+    - jenkins
+
+#     - name: Cat password to debug
+#       debug:
+#         msg: /var/lib/jenkins/secrets/initialAdminPassword
+
+#     - name: Cat admin pass
+#       command: "cat /var/lib/jenkins/secrets/initialAdminPassword"
+#       register: admin_pass
+
+#     - name: Display admin pass
+#       debug: msg={{ admin_pass.stdout }}
+#       when: admin_pass
