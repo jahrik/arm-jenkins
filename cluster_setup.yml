@@ -24,3 +24,7 @@
     validate: '/usr/sbin/visudo -cf %s'
   tags:
     - cluster
+
+- name: Set timezone to US/Pacific
+  timezone:
+    name: US/Pacific
