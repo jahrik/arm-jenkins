@@ -22,8 +22,8 @@ Install ubuntu 18.04 on the Renegade from the Armbian project repos
 
 Initialize an inventory.ini file.  My hosts are as follows:
 
-
 | HOST | purpose |
+|------|---------|
 | rocks | jenkins |
 | bebop | pihole |
 | venus | swarm,gluster |
