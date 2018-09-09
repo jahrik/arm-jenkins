@@ -2,7 +2,7 @@
 
 In this project, I will be installing Jenkins on a single board computer.  The Renegade has a bit more power than a Raspberry pi 3B+ and is handling Jenkins well enough.  I use Ansible to bootstrap Jenkins and from there Jenkins will take over all configuration, build, and deployment tasks for a cluster of small machines.  It will act as the central config management node with the use of Ansible, the Ansible plugin, and ssh access to the other hosts.  It will also act as a manager in a Docker Swarm cluster of 5 nodes and be the build server for arm32v7 and aarch64 docker images and the director of all docker swarm services.
 
-![libre01](https://github.com/jahrik/odroid_/blob/master/pics/odroid_01.jpg?raw=true)
+![renegade_front_right](https://gitlab.com/jahrik/arm-jenkins/blob/master/pics/renegade_front_right.jpg)
 
 ## Hardware
 * [Libre Computer Board ROC-RK3328-CC (Renegade)](https://www.amazon.com/gp/product/B078RT6H8X/ref=oh_aui_detailpage_o00_s00?ie=UTF8&psc=1)
