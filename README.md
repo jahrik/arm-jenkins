@@ -75,17 +75,21 @@ Add the Ansible repo and install
     sudo apt-get update
     sudo apt-get install ansible
 
-The above manual installation can be accomplished with the following Ansible playbook, which will be the included in the first Pipeline created in case anything needs adjusted along the way.
+The above manual installation can be accomplished with the following Ansible playbook, which will be included in the first Jenkins Pipeline created.
 
 *[ansible_install.yml](https://gitlab.com/jahrik/arm-jenkins/blob/master/ansible_install.yml)*
 
     - hosts: all
       become: true
       become_method: sudo
+
       vars:
+
         ansible:
           repo: ppa:ansible/ansible
+
       tasks:
+
       - name: Install dependencies
         apt:
           name: "{{ item }}"
@@ -94,66 +98,88 @@ The above manual installation can be accomplished with the following Ansible pla
         with_items:
           - python
           - software-properties-common
-        tags:
-          - ansible
 
       - apt_repository:
           repo: "{{ ansible.repo }}"
           state: present
-        tags:
-          - ansible
 
       - name: Install Ansible
         apt:
           name: ansible
           state: present
           update_cache: yes
-        tags:
-          - ansible
-
-
 
 ## Jenkins Install
 
-Initialize an inventory.ini file.  My hosts are as follows:
+Jenkins is just as simple to install.
 
-| HOST | purpose |
-|------|---------|
-| rocks | jenkins |
-| bebop | pihole |
-| venus | swarm,gluster |
-| ninja | swarm,gluster |
-| oroku | swarm,gluster |
+First Java needs to be installed
 
-[*inventory.ini*](https://gitlab.com/jahrik/arm-jenkins/blob/master/inventory.ini)
+    sudo apt-get install openjdk-8-jre
 
-    [jenkins]
-    rocks
+Installation steps taken from [jenkins.io/doc](https://jenkins.io/doc/book/installing/)
 
-    # [local]
-    # rocks ansible_connection=local
+    wget -q -O - https://pkg.jenkins.io/debian/jenkins.io.key | sudo apt-key add -
+    sudo sh -c 'echo deb http://pkg.jenkins.io/debian-stable binary/ > /etc/apt/sources.list.d/jenkins.list'
+    sudo apt-get update
+    sudo apt-get install jenkins
 
-    [cluster]
-    bebop
-    venus
-    ninja
-    oroku
+Converting this to Ansible tasks looks like the following
 
-    [docker]
-    rocks
-    bebop
-    venus
-    ninja
-    oroku
+*[jenkins_install.yml](https://gitlab.com/jahrik/arm-jenkins/blob/master/jenkins_install.yml)*
 
-### Install java
+    - hosts: jenkins
+      become: true
+      become_method: sudo
 
-    - name: Install java8
-      apt:
-        name: openjdk-8-jre
-        state: present
-      tags:
-        - java
+      vars:
+
+        jenkins:
+          key_url: https://pkg.jenkins.io/debian/jenkins.io.key
+          repo: deb http://pkg.jenkins.io/debian-stable binary/
+
+      tasks:
+
+        - name: Install java
+          apt:
+            name: openjdk-8-jre
+            state: present
+
+        - name: Add apt signing key for Jenkins
+          apt_key:
+            url: "{{ jenkins.key_url }}"
+            state: present
+          tags:
+            - jenkins
+
+        - name: Add apt repository for Jenkins
+          apt_repository:
+            repo: "{{ jenkins.repo }}"
+            state: present
+          tags:
+            - jenkins
+
+        - name: Install Jenkins
+          apt:
+            name: jenkins
+            state: present
+            update_cache: yes
+          tags:
+            - jenkins
+
+Just to be clever, it's possible to have Ansible cat the Admin password as a debug message on installation with something like the following.
+
+        - name: Cat password to debug
+          debug:
+            msg: /var/lib/jenkins/secrets/initialAdminPassword
+
+        - name: Cat admin pass
+          command: "cat /var/lib/jenkins/secrets/initialAdminPassword"
+          register: admin_pass
+
+        - name: Display admin pass
+          debug: msg={{ admin_pass.stdout }}
+          when: admin_pass
 
 ## Jenkins Plugins
 * Ansible
@@ -164,4 +190,6 @@ Initialize an inventory.ini file.  My hosts are as follows:
 ## Ansible
 
 ## Docker
+
+---
 
