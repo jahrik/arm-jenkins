@@ -9,7 +9,7 @@ In this project, I will be installing Jenkins on a single board computer.  The R
 * [Libre Computer Board Heatsink for ROC-RK3328-CC](https://www.amazon.com/gp/product/B0792VXBVH/ref=oh_aui_detailpage_o00_s00?ie=UTF8&psc=1)
 * [SanDisk Ultra 32GB microSD](https://www.amazon.com/gp/product/B010Q57T02/ref=oh_aui_detailpage_o01_s00?ie=UTF8&psc=1)
 
-Not included in this repo, but a main part of what this Jenkins node will be configuring and controlling is a previously built [3 node Odroid cluster](https://homelab.business/odroid-hc-1-cluster-build/) that are all Docker Swarm managers and will run most of the Docker Swarm services.  They use gluster to provide replicated storage to the Swarm.  It also includes  a raspberry pi 2b, that runs pihole and is also a manager in the Docker Swarm cluster.
+Not included in this build, but a main part of what this Jenkins node will be configuring and controlling is a previously built [3 node Odroid cluster](https://homelab.business/odroid-hc-1-cluster-build/) that are all Docker Swarm managers and will run most of the Docker Swarm services.  They use gluster to provide replicated storage to the Swarm.  It also includes  a raspberry pi 2b, that runs pihole and is also a manager in the Docker Swarm cluster.
 
 ![renegade_front_left.jpg](https://gitlab.com/jahrik/arm-jenkins/raw/master/pics/renegade_front_left.jpg)
 
@@ -69,44 +69,3 @@ Initialize an inventory.ini file.  My hosts are as follows:
 ## Ansible
 
 ## Docker
-
-- name: Install java8
-  apt:
-    name: openjdk-8-jre
-    state: present
-  tags:
-    - java
-
-- name: Add apt signing key for Jenkins
-  apt_key:
-    url: "{{ jenkins.key_url }}"
-    state: present
-  tags:
-    - jenkins
-
-- name: Add apt repository for Jenkins
-  apt_repository:
-    repo: "{{ jenkins.repo }}"
-    state: present
-  tags:
-    - jenkins
-
-- name: Install Jenkins
-  apt:
-    name: jenkins
-    state: present
-    update_cache: yes
-  tags:
-    - jenkins
-
-#     - name: Cat password to debug
-#       debug:
-#         msg: /var/lib/jenkins/secrets/initialAdminPassword
-
-#     - name: Cat admin pass
-#       command: "cat /var/lib/jenkins/secrets/initialAdminPassword"
-#       register: admin_pass
-
-#     - name: Display admin pass
-#       debug: msg={{ admin_pass.stdout }}
-#       when: admin_pass
