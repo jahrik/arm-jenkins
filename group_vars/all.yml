@@ -1,4 +1,5 @@
 ---
+time_zone: US/Pacific
 jenkins:
   key_url: https://pkg.jenkins.io/debian/jenkins.io.key
   repo: deb http://pkg.jenkins.io/debian-stable binary/

@@ -25,6 +25,38 @@
   tags:
     - cluster
 
-- name: Set timezone to US/Pacific
+- name: Set timezone to "{{ time_zone }}"
   timezone:
-    name: US/Pacific
+    name: "{{ time_zone }}"
+  tags:
+    - cluster
+    - time
+
+- name: Set timezone to "{{ time_zone }}"
+  file:
+    src: "/usr/share/zoneinfo/{{ time_zone }}"
+    dest: /etc/localtime
+    owner: root
+    group: root
+    state: link
+  tags:
+    - cluster
+    - time
+
+- name: Install ntp
+  package:
+    name: ntp
+    state: present
+  tags:
+    - cluster
+    - time
+
+- name: Ensure ntpd started and enabled
+  systemd:
+    name: ntp
+    daemon_reload: yes
+    state: started
+    enabled: yes
+  tags:
+    - cluster
+    - time

@@ -18,6 +18,44 @@ Not included in this build, but a main part of what this Jenkins node will be co
 Install ubuntu 18.04 on the Renegade from the Armbian project repos
 * https://www.armbian.com/renegade/
 
+Flash the SD card with dd
+
+    7z e Armbian_5.59_Renegade_Ubuntu_bionic_default_4.4.152_desktop.7z
+    sudo dd if=Armbian_5.59_Renegade_Ubuntu_bionic_default_4.4.152_desktop.img of=/dev/mmcblk0
+
+After inserting the SD card and powering up the Renegade, it will try and obtain a IP address from a DHCP server.  Once obtained a connection can be established with
+    
+    ssh root@renegade
+
+After connecting a prompt will reset the default password, `1234` and create a new system user.  Give this user a password as well.  Give the new user passwordless sudo to make ansible runs easier by creating a file in `/etc/sudoers.d/your_user`
+
+    #/etc/sudoers.d/your_user*
+    your_user ALL=(ALL) NOPASSWD: ALL
+
+Generate an ssh key that will be used to connect to the other hosts
+
+    ssh-keygen -b 4096 -t rsa -f ~/.ssh/id_rsa -C "ansible user"
+
+Update the hostname in `/etc/hostname` & `/etc/hosts`
+
+    #/etc/hostname 
+    rocks
+
+    #/etc/hosts
+    127.0.0.1   localhost rocks
+    ::1         localhost rocks ip6-localhost ip6-loopback
+    ...
+    ...
+
+Configure Timezone
+
+    dpkg-reconfigure tzdata 
+    ...
+    ...
+    Current default time zone: 'America/Los_Angeles'
+    Local time is now:      Sun Sep  9 20:22:27 PDT 2018.
+    Universal Time is now:  Mon Sep 10 03:22:27 UTC 2018.
+
 ## Jenkins Install
 
 Initialize an inventory.ini file.  My hosts are as follows:
