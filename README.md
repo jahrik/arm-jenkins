@@ -1,6 +1,6 @@
 # Libre ROC-RK3328-CC (Renegade) - Jenkins CI/CD on an SBC
 
-In this project, I will be installing Jenkins on a single board computer.  The Renegade has a bit more power than a Raspberry pi 3B+ and is handling Jenkins well enough.  I use Ansible to bootstrap Jenkins and from there Jenkins will take over all configuration, build, and deployment tasks for itself and a cluster of small machines.  It will act as the central config management node with the use of Ansible, the Ansible plugin, and ssh access to the other hosts.  It will also act as a manager in a Docker Swarm cluster of 5 nodes and be the build server for arm32v7 and aarch64 docker images and the director of all docker swarm services.
+In this project, I will be running Jenkins on a single board computer.  The Renegade has a bit more power than a Raspberry pi 3B+ and is handling Jenkins well enough.  I use Ansible to bootstrap Jenkins and from there Jenkins will take over all configuration, build, and deployment tasks for itself and a cluster of small machines.  It will act as the central config management node with the use of Ansible, the Ansible plugin, and ssh access to the other hosts.  It will also act as a manager in a Docker Swarm cluster of 5 nodes and be the build server for arm32v7 and aarch64 docker images and the director of all docker swarm services.
 
 ![renegade_front_right](https://gitlab.com/jahrik/arm-jenkins/raw/master/pics/renegade_front_right.jpg)
 
@@ -149,23 +149,17 @@ Converting this to Ansible tasks looks like the following
           apt_key:
             url: "{{ jenkins.key_url }}"
             state: present
-          tags:
-            - jenkins
 
         - name: Add apt repository for Jenkins
           apt_repository:
             repo: "{{ jenkins.repo }}"
             state: present
-          tags:
-            - jenkins
 
         - name: Install Jenkins
           apt:
             name: jenkins
             state: present
             update_cache: yes
-          tags:
-            - jenkins
 
 Just to be clever, it's possible to have Ansible cat the Admin password as a debug message on installation with something like the following.
 
@@ -181,15 +175,48 @@ Just to be clever, it's possible to have Ansible cat the Admin password as a deb
           debug: msg={{ admin_pass.stdout }}
           when: admin_pass
 
+Navigate to `your_host:8080` on the jenkins node and login to configure the jenkins user, passwords, etc... Checkout the jenkins.io [getting-started](https://jenkins.io/doc/pipeline/tour/getting-started/) docs for further configuration.
+
 ## Jenkins Plugins
-* Ansible
-* AnsiColor
+
+With Jenkins and Ansible installed, use Jenkins to run all subsequent Ansible playbooks from now on to keep configuring itself and all other hosts.  A few plugins need to be installed, first.
+* [Ansible plugin](https://wiki.jenkins.io/display/JENKINS/Ansible+Plugin)
+* [AnsiColor](https://wiki.jenkins.io/display/JENKINS/AnsiColor+Plugin)
+
+Use the GitLab plugin to poll for SCM changes every 5 minutes.  The same can be accomplished with the Github and Bitbucket plugins.
+* [GitLab plugin](https://wiki.jenkins.io/display/JENKINS/GitLab+Plugin)
+
+## GitLab
+
+Create an [API token](https://gitlab.com/profile/personal_access_tokens) on GitLab to connect the Jenkins plugin.
+
+![gitlab_token.png](https://gitlab.com/jahrik/arm-jenkins/raw/master/pics/gitlab_token.png)
+
+## Jenkins Credentials
+
+Navigate to `Jenkins > Credentials > System > Global Credentials` and Create a new GitLab Token credential.
+
+![jenkins_gitlab_token_01.png](https://gitlab.com/jahrik/arm-jenkins/raw/master/pics/jenkins_gitlab_token_01.png)
+![jenkins_gitlab_token_02.png](https://gitlab.com/jahrik/arm-jenkins/raw/master/pics/jenkins_gitlab_token_02.png)
+
+Also, add the ssh key generated for the ansible.
+
+![jenkins_ansible_key.png](https://gitlab.com/jahrik/arm-jenkins/raw/master/pics/jenkins_ansible_key.png)
+
+## Jenkins Pipeline Project
+
+Create a new Pipeline project `ansible-jenkins`
+
+![ansible_jenkins.png](https://gitlab.com/jahrik/arm-jenkins/raw/master/pics/ansible_jenkins.png)
+
+I chose to keep 3 days worth of build history with a max of 5 builds to keep.
+
+![log_rotate.png](https://gitlab.com/jahrik/arm-jenkins/raw/master/pics/log_rotate.png)
 
 ## Hosts
 
-## Ansible
-
 ## Docker
 
----
+## Gluster
 
+## Magi Coin miners on Docker Swarm
