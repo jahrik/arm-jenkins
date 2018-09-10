@@ -79,7 +79,7 @@ The above manual installation can be accomplished with the following Ansible pla
 
 *[ansible_install.yml](https://gitlab.com/jahrik/arm-jenkins/blob/master/ansible_install.yml)*
 
-    - hosts: all
+    - hosts: ansible
       become: true
       become_method: sudo
 
