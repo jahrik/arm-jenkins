@@ -32,11 +32,17 @@ After connecting a prompt will reset the default password, `1234` and create a n
     #/etc/sudoers.d/your_user*
     your_user ALL=(ALL) NOPASSWD: ALL
 
+Ensure the system is up to date
+
+    apt-get update
+    apt-get upgrade -y
+
 Generate an ssh key that will be used to connect to the other hosts
 
     ssh-keygen -b 4096 -t rsa -f ~/.ssh/id_rsa -C "ansible user"
 
 Update the hostname in `/etc/hostname` & `/etc/hosts`
+I'm choosing `rocks`
 
     #/etc/hostname 
     rocks
@@ -55,6 +61,57 @@ Configure Timezone
     Current default time zone: 'America/Los_Angeles'
     Local time is now:      Sun Sep  9 20:22:27 PDT 2018.
     Universal Time is now:  Mon Sep 10 03:22:27 UTC 2018.
+
+## Ansible Install
+
+Ensure python is installed
+
+    sudo apt-get install python
+    sudo apt-get install software-properties-common
+
+Add the Ansible repo and install
+
+    sudo apt-add-repository ppa:ansible/ansible
+    sudo apt-get update
+    sudo apt-get install ansible
+
+The above manual installation can be accomplished with the following Ansible playbook, which will be the included in the first Pipeline created in case anything needs adjusted along the way.
+
+*[ansible_install.yml](https://gitlab.com/jahrik/arm-jenkins/blob/master/ansible_install.yml)*
+
+    - hosts: all
+      become: true
+      become_method: sudo
+      vars:
+        ansible:
+          repo: ppa:ansible/ansible
+      tasks:
+      - name: Install dependencies
+        apt:
+          name: "{{ item }}"
+          state: present
+          update_cache: yes
+        with_items:
+          - python
+          - software-properties-common
+        tags:
+          - ansible
+
+      - apt_repository:
+          repo: "{{ ansible.repo }}"
+          state: present
+        tags:
+          - ansible
+
+      - name: Install Ansible
+        apt:
+          name: ansible
+          state: present
+          update_cache: yes
+        tags:
+          - ansible
+
+
 
 ## Jenkins Install
 
@@ -107,3 +164,4 @@ Initialize an inventory.ini file.  My hosts are as follows:
 ## Ansible
 
 ## Docker
+

@@ -1,21 +1,17 @@
 ---
-###################
-# Install ansible #
-###################
-
-# apt-add-repository "deb http://ppa.launchpad.net/ansible/ansible/ubuntu bionic main"
-
-- name: Add apt signing key for Ansible
-  apt_key:
-    keyserver: "{{ ansible.key_server }}"
-    id: "{{ ansible.key_id }}"
+- name: Install dependencies
+  apt:
+    name: "{{ item }}"
     state: present
+    update_cache: yes
+  with_items:
+    - python
+    - software-properties-common
   tags:
     - ansible
 
-- name: Enable Ansible repository
-  apt_repository:
-    repo: "deb http://ppa.launchpad.net/ansible/ansible/ubuntu {{ ansible_distribution_release }} main"
+- apt_repository:
+    repo: "{{ ansible.repo }}"
     state: present
   tags:
     - ansible
