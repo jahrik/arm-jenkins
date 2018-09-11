@@ -67,10 +67,10 @@ Configure Timezone
 Ensure python is installed
 
     sudo apt-get install python
-    sudo apt-get install software-properties-common
 
 Add the Ansible repo and install
 
+    sudo apt-get install software-properties-common
     sudo apt-add-repository ppa:ansible/ansible
     sudo apt-get update
     sudo apt-get install ansible
@@ -213,9 +213,134 @@ I chose to keep 3 days worth of build history with a max of 5 builds to keep.
 
 ![log_rotate.png](https://gitlab.com/jahrik/arm-jenkins/raw/master/pics/log_rotate.png)
 
+Configure the project to build on a push event to GitLab and to poll SCM every 5 minutes.
+
+![jenkins_build_on_push.png](https://gitlab.com/jahrik/arm-jenkins/raw/master/pics/jenkins_build_on_push.png)
+
+Lastly, choose a `Pipeline script from SCM`, enter the clone url of the project, the branch to follow, and the Name of the `Jenkinsfile`.
+
+![jenkins_pipeline_configs.png](https://gitlab.com/jahrik/arm-jenkins/raw/master/pics/jenkins_pipeline_configs.png)
+
+Save the project and start building!  Changes pushed to the master branch of GitLab will kick off a playbook including all above configurations that were made plus everything that needs configured form here on out.  As playbooks are added to the pipeline and pushed up to Github, Jenkins will poll every 5 minutes, see these changes and deploy the Pipeline again and again, automatically.
+
+![jenkins_pipeline_configs.png](https://gitlab.com/jahrik/arm-jenkins/raw/master/pics/jenkins_pipeline_configs.png)
+
+A basic Ansible Pipeline.
+
+* [inventory.ini](https://gitlab.com/jahrik/arm-jenkins/blob/master/inventory.ini)
+* [playbook.yml](https://gitlab.com/jahrik/arm-jenkins/blob/master/playbook.yml)
+
+*[Jenkinsfile](https://gitlab.com/jahrik/arm-jenkins/blob/master/Jenkinsfile)*
+
+    #!/usr/bin/env groovy
+    node('master') {
+
+        try {
+
+            stage('build') {
+                // Clean workspace
+                deleteDir()
+                // Checkout the app at the given commit sha from the webhook
+                checkout scm
+            }
+
+            stage('test') {
+                // Run any testing suites
+                sh "echo 'WE ARE TESTING'"
+            }
+
+            stage('deploy') {
+                sh "echo 'WE ARE DEPLOYING'"
+                ansiColor('xterm') {
+                    ansiblePlaybook(
+                        playbook: 'playbook.yml',
+                        inventory: 'inventory.ini',
+                        // limit: 'local',
+                        colorized: true)
+                }
+            }
+
+        } catch(error) {
+            throw error
+
+        } finally {
+            // Any cleanup operations needed, whether we hit an error or not
+
+        }
+    }
+
 ## Hosts
 
+* rocks
+* bebop
+* venus
+* ninja
+* oroku
+
+The other hosts in the inventory file are the 3 Odroids and a raspberry pi 2B.  They are all already managers in a Docker Swarm cluster of 4, of which the Renegade `rocks` will be added.  Jenkins will take over configurations and deployments I have been doing up to this point from my laptop.  First, they will each need a new jenkins user with ssh and sudo access.
+
+To each host in the cluster, add a jenkins user, create jenkins group, create a password.
+
+    adduser jenkins
+
+And grant jenkins passwordless sudo to each host ansible will connect to by creating a new file at `/etc/sudoers.d/jenkins`
+
+    #/etc/sudoers.d/jenkins
+    jenkins ALL=(ALL) NOPASSWD: ALL
+
+Then, from the Jenkins host and as the jenkins user, add the ssh key to all other hosts in the cluster including itself.
+
+    ssh rocks
+    su jenkins
+    ssh-copy-id rocks
+    ssh-copy-id bebop
+    ssh-copy-id venus
+    ssh-copy-id ninja
+    ssh-copy-id oroku
+
+Once connectivity and sudo access have been established, it can be tested by hitting all hosts with the Ansible ping module.
+
+    cd /var/lib/jenkins/workspace/ansible-jenkins
+    jenkins@rocks:~/workspace/ansible-jenkins$ ansible -i inventory.ini all -m ping
+    venus | SUCCESS => {
+        "changed": false,
+        "ping": "pong"
+    }
+    rocks | SUCCESS => {
+        "changed": false,
+        "ping": "pong"
+    }
+    ninja | SUCCESS => {
+        "changed": false,
+        "ping": "pong"
+    }
+    bebop | SUCCESS => {
+        "changed": false,
+        "ping": "pong"
+    }
+    oroku | SUCCESS => {
+        "changed": false,
+        "ping": "pong"
+    }
+
 ## Docker
+
+This node is then added to a pre-existing Docker Swarm cluster to act as the primary build and deploy node.  From any of the other 4 managers, a docker swarm token is obtained.
+
+    root@ninja:~# docker swarm join-token manager
+    To add a manager to this swarm, run the following command:
+
+        docker swarm join --token SWMTKN-1-352mfchgq520dgrf7u1f7jr78703pbcotcxuh127rjbay1pp80-6wz38c4uwlq2crktamnogngpj 192.168.2.241:2377
+
+The above command is then entered on the jenkins node to add it to the cluster, which then grows to 5 nodes.
+
+    root@ninja:~# docker node ls
+    ID                            HOSTNAME            STATUS              AVAILABILITY        MANAGER STATUS      ENGINE VERSION
+    ksrj43zy4ikn13u3ti2isj25w     bebop               Ready               Active              Reachable           18.06.1-ce
+    vua2496krrwr1ca2w7wpubvgv *   ninja               Ready               Active              Reachable           18.06.1-ce
+    n0vb407wdnql1jz7f25ci72k4     oroku               Ready               Active              Reachable           18.06.1-ce
+    o8494d7tiyv21x1qnzcs4d6em     rocks               Ready               Active              Reachable           18.06.1-ce
+    j9pa4a0ulvmn17cc5uahs5w59     venus               Ready               Active              Leader              18.06.1-ce
 
 ## Gluster
 
