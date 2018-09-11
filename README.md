@@ -1,6 +1,9 @@
 # Libre ROC-RK3328-CC (Renegade) - Jenkins CI/CD on an SBC
 
-In this project, I will be running Jenkins on a single board computer.  [The Renegade](https://libre.computer/products/boards/roc-rk3328-cc/) has a bit more power than a Raspberry pi 3B+ and is handling Jenkins well enough.  I use Ansible to bootstrap Jenkins and from there Jenkins will take over all configuration, build, and deployment tasks for itself and a cluster of small machines.  It will act as the central config management node with the use of Ansible, the Ansible plugin, and ssh access to the other hosts.  It will also act as a manager in a Docker Swarm cluster of 5 nodes and be the build server for arm32v7 and aarch64 docker images and the director of all docker swarm services.
+In this project, I will be running Jenkins on a single board computer.  [The Renegade](https://libre.computer/products/boards/roc-rk3328-cc/) has a bit more power than a Raspberry pi 3B+ and is handling Jenkins well enough.  I use Ansible to bootstrap Jenkins and from there Jenkins will take over all configuration, build, and deployment tasks for itself and a cluster of small machines.  It will act as the central config management node with the use of Ansible, the Ansible Gitlab plugins, and ssh access to the other hosts.  It will also act as a manager in a Docker Swarm cluster of 5 nodes and be the build server for arm32v7 and aarch64 docker images and the director of all docker swarm services.
+
+Please refer to the source code of this project for completed references to Ansible playbooks, Jenkins Pipelines, Docker builds, and stack deploy files.
+* [https://gitlab.com/jahrik/arm-jenkins](https://gitlab.com/jahrik/arm-jenkins)
 
 ![renegade_front_right](https://gitlab.com/jahrik/arm-jenkins/raw/master/pics/renegade_front_right.jpg)
 
@@ -23,11 +26,11 @@ Flash the SD card with dd
     7z e Armbian_5.59_Renegade_Ubuntu_bionic_default_4.4.152_desktop.7z
     sudo dd if=Armbian_5.59_Renegade_Ubuntu_bionic_default_4.4.152_desktop.img of=/dev/mmcblk0
 
-After inserting the SD card and powering up the Renegade, it will try and obtain a IP address from a DHCP server.  Once obtained a connection can be established with
+After inserting the SD card and powering up the Renegade, it will try and receive an IP address from a DHCP server.  Once obtained, a connection can be established with the default user `root` and password `1234`.
     
     ssh root@renegade
 
-After connecting a prompt will reset the default password, `1234` and create a new system user.  Give this user a password as well.  Give the new user passwordless sudo to make ansible runs easier by creating a file in `/etc/sudoers.d/your_user`
+After connecting a prompt will ask to reset the default password and create a new system user.  Give this user a password as well.  Give the new user passwordless sudo to make ansible runs easier by creating a file in `/etc/sudoers.d/your_user`.
 
     #/etc/sudoers.d/your_user*
     your_user ALL=(ALL) NOPASSWD: ALL
@@ -161,7 +164,7 @@ Converting this to Ansible tasks looks like the following
             state: present
             update_cache: yes
 
-Just to be clever, it's possible to have Ansible cat the Admin password as a debug message on installation with something like the following.
+Just to be clever, it's possible to have Ansible cat the Admin password as a debug message on the initial install with something like the following.
 
         - name: Cat password to debug
           debug:
@@ -348,10 +351,43 @@ With the node added, docker commands can now be added the jenkins Pipelines.  Je
 
 * [https://gitlab.com/jahrik/arm-gluster](https://gitlab.com/jahrik/arm-gluster)
 
-The Odroids each have a 220G SSD drive connected to them and are configured to create 3 replicas of any file written using gluster.  This project was already created beforehand and will now be added to Jenkins in the same way the above jenkins-ansible project was added.  It will also poll SCM every 5 minutes.  If I decide to make any changes to the gluster configs, I just have to push them up to GitLab and Jenkins will handle the rest.
+The Odroids each have a 220G SSD drives connected and are configured to create a total of 3 replicas of any file written to a shared mount using gluster.  This project was already created beforehand and will now be added to Jenkins in the same way the above jenkins-ansible project was added.  It will also poll SCM every 5 minutes.  If I decide to make any changes to the gluster configs, I just have to push them to source control and Jenkins will handle the rest.
 
 ![jenkins_gluster.png](https://gitlab.com/jahrik/arm-jenkins/raw/master/pics/jenkins_gluster.png)
 
 ## Mining Magi Coin
 
-As a final example, I chose to stress test the Odroids by mining cryptocurrency. 
+* [https://gitlab.com/jahrik/arm-m-minerd](https://gitlab.com/jahrik/arm-m-minerd)
+
+As a final example, I will stress test the Odroids by mining cryptocurrency. The Jenkins node `rocks` will build the docker image from a Dockerfile, push it up to Dockerhub, and deploy the miner service to Docker Swarm.  It will only run on nodes that are labeled `miner=true` to keep it from running on anything but the Odroids.  Any host level configuration, directory creation for volumes, etc should be handled by Ansible before deploying the service to Swarm, if mounted volumes are required.
+
+This project starts with the [arm32v7/ubuntu](https://hub.docker.com/r/arm32v7/ubuntu/) base image.  All dependencies are installed.  It then clones the [m-cpuminer-v2](https://github.com/m-pays/m-cpuminer-v2.git) software, configures it, makes installs it, and preps it for execution.
+
+*[Dockerfile](https://gitlab.com/jahrik/arm-m-minerd/blob/master/Dockerfile)*
+
+    FROM arm32v7/ubuntu
+
+    RUN apt-get update
+    RUN apt-get install -y \
+        git \
+        gcc \
+        make \
+        automake \
+        libgmp-dev \
+        libcurl4-openssl-dev
+
+    ARG workdir=/tmp
+    WORKDIR $workdir
+    RUN git clone https://github.com/m-pays/m-cpuminer-v2.git
+    WORKDIR $workdir/m-cpuminer-v2
+    RUN ./autogen.sh && ./configure CFLAGS="-O3" CXXFLAGS="-O3"
+    RUN make && make install
+    RUN rm -rf $workdir/m-cpuminer-v2
+
+    CMD ["m-minerd","--benchmark"]
+
+I will use a Makefile to build, push, and deploy the docker image.
+
+I want to keep an eye on CPU temperatures as I stress test these, so I don't let it get too hot.  In order to do so, I'm going to use a [python script](https://gitlab.com/jahrik/arm-m-minerd/blob/master/templates/temp.j2) I found on the internet and write it to all three Odroid nodes with a simple Ansible [playbook](https://gitlab.com/jahrik/arm-m-minerd/blob/master/playbook.yml).  I'll then have Jenkins test against this script for a while after the miners are running and kill the service if things get too hot.
+
+
