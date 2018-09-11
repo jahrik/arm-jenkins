@@ -325,23 +325,33 @@ Once connectivity and sudo access have been established, it can be tested by hit
 
 ## Docker
 
-This node is then added to a pre-existing Docker Swarm cluster to act as the primary build and deploy node.  From any of the other 4 managers, a docker swarm token is obtained.
+This node is then added to a pre-existing Docker Swarm cluster to act as the primary build and deploy node.  From any of the other 4 managers, a docker swarm token can be obtained.
 
     root@ninja:~# docker swarm join-token manager
     To add a manager to this swarm, run the following command:
 
-        docker swarm join --token SWMTKN-1-352mfchgq520dgrf7u1f7jr78703pbcotcxuh127rjbay1pp80-6wz38c4uwlq2crktamnogngpj 192.168.2.241:2377
+        docker swarm join --token SWMTKN-1-token_number 192.168.123.123:2377
 
-The above command is then entered on the jenkins node to add it to the cluster, which then grows to 5 nodes.
+The above command is then entered on the jenkins node `rocks` to add it to the cluster, which then grows to 5 nodes.
 
     root@ninja:~# docker node ls
     ID                            HOSTNAME            STATUS              AVAILABILITY        MANAGER STATUS      ENGINE VERSION
-    ksrj43zy4ikn13u3ti2isj25w     bebop               Ready               Active              Reachable           18.06.1-ce
-    vua2496krrwr1ca2w7wpubvgv *   ninja               Ready               Active              Reachable           18.06.1-ce
-    n0vb407wdnql1jz7f25ci72k4     oroku               Ready               Active              Reachable           18.06.1-ce
-    o8494d7tiyv21x1qnzcs4d6em     rocks               Ready               Active              Reachable           18.06.1-ce
-    j9pa4a0ulvmn17cc5uahs5w59     venus               Ready               Active              Leader              18.06.1-ce
+    ksrj43ti2is3zy4ikn13uj25w     bebop               Ready               Active              Reachable           18.06.1-ce
+    rrwr1vua2496kca2w7wpubvgv *   ninja               Ready               Active              Reachable           18.06.1-ce
+    n0vb407w25cdnql1jz7fi72k4     oroku               Ready               Active              Reachable           18.06.1-ce
+    o8494x1qd7tiyv21nzcs4d6em     rocks               Ready               Active              Reachable           18.06.1-ce
+    j9pa7cc54a0ulvmn1uahs5w59     venus               Ready               Active              Leader              18.06.1-ce
+
+With the node added, docker commands can now be added the jenkins Pipelines.  Jenkins can now call `docker stack deploy` commands to deploy any and all stacks to the swarm cluster.
 
 ## Gluster
 
-## Magi Coin miners on Docker Swarm
+* [https://gitlab.com/jahrik/arm-gluster](https://gitlab.com/jahrik/arm-gluster)
+
+The Odroids each have a 220G SSD drive connected to them and are configured to create 3 replicas of any file written using gluster.  This project was already created beforehand and will now be added to Jenkins in the same way the above jenkins-ansible project was added.  It will also poll SCM every 5 minutes.  If I decide to make any changes to the gluster configs, I just have to push them up to GitLab and Jenkins will handle the rest.
+
+![jenkins_gluster.png](https://gitlab.com/jahrik/arm-jenkins/raw/master/pics/jenkins_gluster.png)
+
+## Mining Magi Coin
+
+As a final example, I chose to stress test the Odroids by mining cryptocurrency. 
