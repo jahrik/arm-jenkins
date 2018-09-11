@@ -347,6 +347,15 @@ The above command is then entered on the jenkins node `rocks` to add it to the c
 
 With the node added, docker commands can now be added the jenkins Pipelines.  Jenkins can now call `docker stack deploy` commands to deploy any and all stacks to the swarm cluster.
 
+Add the jenkins user to the docker group to allow it to use docker commands without sudo
+
+    sudo usermod -aG docker jenkins
+
+Logging out and back in, shows that jenkins is now part of the docker group
+
+    jenkins@rocks:/root$ groups
+    jenkins docker
+
 ## Gluster
 
 * [https://gitlab.com/jahrik/arm-gluster](https://gitlab.com/jahrik/arm-gluster)
@@ -361,7 +370,7 @@ The Odroids each have a 220G SSD drives connected and are configured to create a
 
 As a final example, I will stress test the Odroids by mining cryptocurrency. The Jenkins node `rocks` will build the docker image from a Dockerfile, push it up to Dockerhub, and deploy the miner service to Docker Swarm.  It will only run on nodes that are labeled `miner=true` to keep it from running on anything but the Odroids.  Any host level configuration, directory creation for volumes, etc should be handled by Ansible before deploying the service to Swarm, if mounted volumes are required.
 
-This project starts with the [arm32v7/ubuntu](https://hub.docker.com/r/arm32v7/ubuntu/) base image.  All dependencies are installed.  It then clones the [m-cpuminer-v2](https://github.com/m-pays/m-cpuminer-v2.git) software, configures it, makes installs it, and preps it for execution.
+This project starts with the [arm32v7/ubuntu](https://hub.docker.com/r/arm32v7/ubuntu/) base image.  All dependencies are installed.  It then clones the [m-cpuminer-v2](https://github.com/m-pays/m-cpuminer-v2) software, configures it, makes installs it, and preps it for execution.
 
 *[Dockerfile](https://gitlab.com/jahrik/arm-m-minerd/blob/master/Dockerfile)*
 
@@ -386,8 +395,74 @@ This project starts with the [arm32v7/ubuntu](https://hub.docker.com/r/arm32v7/u
 
     CMD ["m-minerd","--benchmark"]
 
-I will use a Makefile to build, push, and deploy the docker image.
+A simple Makefile will save repetitive command execution while building, pushing, and deploying the docker image, as well as make it a bit easier to call in the Jenkins Pipeline.
+
+*[Makefile](https://gitlab.com/jahrik/arm-m-minerd/blob/master/Makefile)*
+
+    IMAGE = "jahrik/m-minerd"
+    TAG = "arm32v7"
+
+    all: build
+
+    build:
+      @docker build -t ${IMAGE}:$(TAG) .
+      @docker tag ${IMAGE}:$(TAG) ${IMAGE}:latest
+
+    push:
+      @docker push ${IMAGE}:$(TAG)
+      @docker push ${IMAGE}:latest
+
+    deploy:
+      @docker stack deploy -c minerd-stack.yml mine
+
+    .PHONY: all build push deploy
+
+A Jenkins Pipeline will then tie these together.
+
+*[Jenkinsfile](https://gitlab.com/jahrik/arm-m-minerd/blob/master/Jenkinsfile)*
+
+    #!/usr/bin/env groovy
+    node('master') {
+
+        try {
+
+            stage('build') {
+                // Clean workspace
+                deleteDir()
+                // Checkout the app at the given commit sha from the webhook
+                checkout scm
+                sh "make"
+            }
+
+            stage('test') {
+                // Run any testing suites
+            }
+
+            stage('push') {
+                // Push to Dockerhub
+                sh "make push"
+            }
+
+            stage('deploy') {
+                // Deploy to Swarm
+                sh "make deploy"
+            }
+
+        } catch(error) {
+            throw error
+
+        } finally {
+            // Any cleanup operations needed, whether we hit an error or not
+
+        }
+    }
+
+When kicked off, it will then build the docker image.
+
+![jenkins_docker_build.png](https://gitlab.com/jahrik/arm-jenkins/raw/master/pics/jenkins_docker_build.png)
+
+Which in turn will download and `make && make install` the m-cpuminer-v2 software.
+
+![jenkins_make.png](https://gitlab.com/jahrik/arm-jenkins/raw/master/pics/jenkins_make.png)
 
 I want to keep an eye on CPU temperatures as I stress test these, so I don't let it get too hot.  In order to do so, I'm going to use a [python script](https://gitlab.com/jahrik/arm-m-minerd/blob/master/templates/temp.j2) I found on the internet and write it to all three Odroid nodes with a simple Ansible [playbook](https://gitlab.com/jahrik/arm-m-minerd/blob/master/playbook.yml).  I'll then have Jenkins test against this script for a while after the miners are running and kill the service if things get too hot.
-
-
