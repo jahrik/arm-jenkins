@@ -280,7 +280,7 @@ A basic Ansible Pipeline.
 * ninja
 * oroku
 
-The other hosts in the inventory file are the 3 Odroids and a raspberry pi 2B.  They are all already managers in a Docker Swarm cluster of 4, of which the Renegade `rocks` will be added.  Jenkins will take over configurations and deployments I have been doing up to this point from my laptop.  First, they will each need a new jenkins user with ssh and sudo access.
+The other hosts in the inventory file are the 3 Odroids and a Raspberry Pi 2B.  They are all already managers in a Docker Swarm cluster of 4, of which the Renegade `rocks` will be added.  Jenkins will take over configurations and deployments I have been doing up to this point from my laptop.  First, they will each need a new jenkins user with ssh and sudo access.
 
 To each host in the cluster, add a jenkins user, create jenkins group, create a password.
 
@@ -478,7 +478,7 @@ Navigate to `Manage Jenkins > Manage Nodes > New Node` and create a new node.  I
 Give it a:
 * Name
 * Description
-* # of executers
+* Number of executers
   * (default is 1) I'm giving it 2
 * Remote root directory
   * Ansible has already created a /home/jenkins/ directory on every node, so I'm using that.
@@ -551,9 +551,44 @@ Login to docker with the jenkins user on the ninja host, so it can push the buil
 
     Login Succeeded
 
-Viewing the log output shows that it is building and pushing the image now! Woot!
+Viewing the log output shows that it is building, pushing, and deploying the image now! Woot!
 
-![deploy_miner.png](https://gitlab.com/jahrik/arm-jenkins/raw/master/pics/deploy_miner.png)
+    ...
+    ...
+    Step 16/16 : CMD m-minerd --url $M_URL -u $M_USER.$M_WORK -p $M_PASS -e $M_CPU
+     ---> Using cache
+     ---> 1f14b0bc275e
+    Successfully built 1f14b0bc275e
+    Successfully tagged jahrik/m-minerd:arm32v7
+    ...
+    ...
+    + make deploy
+    Creating network mine_default
+    Creating service mine_minerd
+    [Pipeline] }
+    [Pipeline] // stage
+    [Pipeline] }
+    [Pipeline] // node
+    [Pipeline] End of Pipeline
+    Finished: SUCCESS
+
+Running `docker stack ps mine` will show what it's up to.
+
+    docker stack ps mine
+    ID                  NAME                                        IMAGE                        NODE                DESIRED STATE       CURRENT STATE            ERROR                              PORTS
+    ai133o2bvtlg        mine_minerd.n0vbd07wdnqlejz7f25ci72k4       jahrik/arm-m-minerd:latest   oroku               Running             Running 6 minutes ago                                       
+    jezbi8zrach2        mine_minerd.vua2596krrwroca2w7wpubvgv       jahrik/arm-m-minerd:latest   ninja               Running             Running 7 minutes ago                                       
+    jlxy8vn09hd8        mine_minerd.j9paya0ulvmni7cc5uahs5w59       jahrik/arm-m-minerd:latest   venus               Running             Running 7 minutes ago  
+
+Running htop on all three Odroids shows all 24 cores crunching away!
+
+![miner_htop.png](https://gitlab.com/jahrik/arm-jenkins/raw/master/pics/miner_htop.png)
+
+Logging into [https://xmg.minerclaim.net/](https://xmg.minerclaim.net/) shows that the three Odroids are getting about 40KH/s 
+
+![hash_rate.png](https://gitlab.com/jahrik/arm-jenkins/raw/master/pics/hash_rate.png)
+
+
 
 I want to keep an eye on CPU temperatures as I stress test these, so I don't let it get too hot.  In order to do so, I'm going to use a [python script](https://gitlab.com/jahrik/arm-m-minerd/blob/master/templates/temp.j2) I found on the internet and write it to all three Odroid nodes with a simple Ansible [playbook](https://gitlab.com/jahrik/arm-m-minerd/blob/master/playbook.yml).  I'll then have Jenkins test against this script for a while after the miners are running and kill the service if things get too hot.
 
