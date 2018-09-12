@@ -370,7 +370,7 @@ The Odroids each have a 220G SSD drives connected and are configured to create a
 
 As a final example, I will stress test the Odroids by mining cryptocurrency. The Jenkins node `rocks` will build the docker image from a Dockerfile, push it up to Dockerhub, and deploy the miner service to Docker Swarm.  It will only run on nodes that are labeled `miner=true` to keep it from running on anything but the Odroids.  Any host level configuration, directory creation for volumes, etc should be handled by Ansible before deploying the service to Swarm, if mounted volumes are required.
 
-This project starts with the [arm32v7/ubuntu](https://hub.docker.com/r/arm32v7/ubuntu/) base image.  All dependencies are installed.  It then clones the [m-cpuminer-v2](https://github.com/m-pays/m-cpuminer-v2) software, configures it, make installs it, and preps it for execution.  It uses environment variables to pass in user and password credentials that will be pulled into the environment from Jenkins after the images builds so I don't push my credentials up to Dockerhub and before the service is deployed so they are pulled into the docker-stack.yml file as it is being deployed.  The default values below are placeholders for the most part.
+This project starts with the [arm32v7/ubuntu](https://hub.docker.com/r/arm32v7/ubuntu/) base image.  All dependencies are installed.  It then clones the [m-cpuminer-v2](https://github.com/m-pays/m-cpuminer-v2) software, configures it, make installs it, and preps it for execution.  It uses environment variables to pass in user and password credentials that will be pulled into the environment from Jenkins after the image builds so I don't push my credentials up to Dockerhub and before the service is deployed so they are pulled into the docker-stack.yml file as it is being deployed.  The default values below are placeholders for the most part.
 
 *[Dockerfile](https://gitlab.com/jahrik/arm-m-minerd/blob/master/Dockerfile)*
 
@@ -574,7 +574,7 @@ Login to docker with the jenkins user on the ninja host, so it can push the buil
 
     Login Succeeded
 
-Viewing the log output shows that it is building, pushing, and deploying the image now! Woot!
+With all that final configuration, viewing the log output now shows that it building, pushing, and deploying the image! Woot!
 
     ...
     ...
@@ -609,9 +609,11 @@ Running htop on all three Odroids shows all 24 cores crunching away!
 
 ![miner_htop.png](https://gitlab.com/jahrik/arm-jenkins/raw/master/pics/miner_htop.png)
 
-Logging into [https://xmg.minerclaim.net/](https://xmg.minerclaim.net/) shows that the three Odroids are getting about 40KH/s 
+Logging into [https://xmg.minerclaim.net/](https://xmg.minerclaim.net/) shows that the three Odroids are getting about 45KH/s 
 
 ![hash_rate.png](https://gitlab.com/jahrik/arm-jenkins/raw/master/pics/hash_rate.png)
 
 As an added challenge at some point, I'd like to automate checking CPU temperatures as I stress test these, so I don't let it get too hot.  In order to do so, I'll use a [python script](https://gitlab.com/jahrik/arm-m-minerd/blob/master/templates/temp.j2) I found on the internet and write it to all three Odroid nodes with a simple Ansible [playbook](https://gitlab.com/jahrik/arm-m-minerd/blob/master/playbook.yml).  I'll then need to add a post deploy stage to the Jenkinsfile and have it run this script for a while after the miners are running and kill the service if things get too hot.
+
+For now, I think this project is a success.  I'm very happy with the Libre Renegade board. It had one weird quirk the first couple of days.  When calling `reboot` form the command line.  I would power off, but not want to power back up.  It has since stopped doing that a few days ago and hasn't seemed to do it since.  Other than that, it works great!  A very powerful little machine for as low as it is on power usage.  Running along side the old Pi 2b, it barely uses any more power.  The Pi tends to sit around 0.27 amps where the Renegade is staying around 0.42 amps while participating in the swarm cluster, running Jenkins builds, and exporting node_exporter to Prometheus.  So at 5v x 0.42 amps = 2.1 watts x 24 hours a day at about $0.09/kWh where I live, this thing is going to cost me about $1.66 a year to run.  I'm happy with that :-)
 
