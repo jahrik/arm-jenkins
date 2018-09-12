@@ -202,7 +202,7 @@ Navigate to `Jenkins > Credentials > System > Global Credentials` and Create a n
 ![jenkins_gitlab_token_01.png](https://gitlab.com/jahrik/arm-jenkins/raw/master/pics/jenkins_gitlab_token_01.png)
 ![jenkins_gitlab_token_02.png](https://gitlab.com/jahrik/arm-jenkins/raw/master/pics/jenkins_gitlab_token_02.png)
 
-Also, add the ssh key generated for the ansible.
+Also, add the ssh key generated for the ansible user.
 
 ![jenkins_ansible_key.png](https://gitlab.com/jahrik/arm-jenkins/raw/master/pics/jenkins_ansible_key.png)
 
@@ -220,7 +220,7 @@ Configure the project to build on a push event to GitLab and to poll SCM every 5
 
 ![jenkins_build_on_push.png](https://gitlab.com/jahrik/arm-jenkins/raw/master/pics/jenkins_build_on_push.png)
 
-Lastly, choose a `Pipeline script from SCM`, enter the clone url of the project, the branch to follow, and the Name of the `Jenkinsfile`.
+Lastly, choose a `Pipeline script from SCM`, enter the clone url of the project, the branch to follow, and the name of the `Jenkinsfile`.
 
 ![jenkins_pipeline_configs.png](https://gitlab.com/jahrik/arm-jenkins/raw/master/pics/jenkins_pipeline_configs.png)
 
@@ -345,7 +345,7 @@ The above command is then entered on the jenkins node `rocks` to add it to the c
     o8494x1qd7tiyv21nzcs4d6em     rocks               Ready               Active              Reachable           18.06.1-ce
     j9pa7cc54a0ulvmn1uahs5w59     venus               Ready               Active              Leader              18.06.1-ce
 
-With the node added, docker commands can now be added the jenkins Pipelines.  Jenkins can now call `docker stack deploy` commands to deploy any and all stacks to the swarm cluster.
+With the Jenkins node added to the Swarm cluster, docker commands can now be added the jenkins Pipelines.  Jenkins can now call `docker stack deploy` commands to deploy services to the swarm cluster.
 
 Add the jenkins user to the docker group to allow it to use docker commands without sudo
 
@@ -370,11 +370,17 @@ The Odroids each have a 220G SSD drives connected and are configured to create a
 
 As a final example, I will stress test the Odroids by mining cryptocurrency. The Jenkins node `rocks` will build the docker image from a Dockerfile, push it up to Dockerhub, and deploy the miner service to Docker Swarm.  It will only run on nodes that are labeled `miner=true` to keep it from running on anything but the Odroids.  Any host level configuration, directory creation for volumes, etc should be handled by Ansible before deploying the service to Swarm, if mounted volumes are required.
 
-This project starts with the [arm32v7/ubuntu](https://hub.docker.com/r/arm32v7/ubuntu/) base image.  All dependencies are installed.  It then clones the [m-cpuminer-v2](https://github.com/m-pays/m-cpuminer-v2) software, configures it, makes installs it, and preps it for execution.
+This project starts with the [arm32v7/ubuntu](https://hub.docker.com/r/arm32v7/ubuntu/) base image.  All dependencies are installed.  It then clones the [m-cpuminer-v2](https://github.com/m-pays/m-cpuminer-v2) software, configures it, make installs it, and preps it for execution.  It uses environment variables to pass in user and password credentials that will be pulled into the environment from Jenkins after the images builds so I don't push my credentials up to Dockerhub and before the service is deployed so they are pulled into the docker-stack.yml file as it is being deployed.  The default values below are placeholders for the most part.
 
 *[Dockerfile](https://gitlab.com/jahrik/arm-m-minerd/blob/master/Dockerfile)*
 
     FROM arm32v7/ubuntu
+
+    ENV M_USER=m_user
+    ENV M_WORK=m_work
+    ENV M_PASS=m_pass
+    ENV M_URL=stratum+tcp://xmg.minerclaim.net:3333
+    ENV M_CPU=50
 
     RUN apt-get update
     RUN apt-get install -y \
@@ -393,9 +399,9 @@ This project starts with the [arm32v7/ubuntu](https://hub.docker.com/r/arm32v7/u
     RUN make && make install
     RUN rm -rf $workdir/m-cpuminer-v2
 
-    CMD ["m-minerd","--benchmark"]
+    CMD m-minerd --url $M_URL -u $M_USER.$M_WORK -p $M_PASS -e $M_CPU
 
-A simple Makefile will save repetitive command execution while building, pushing, and deploying the docker image, as well as make it a bit easier to call in the Jenkins Pipeline.
+A simple Makefile will save repetitive command execution while building, pushing, and deploying the docker image, as well as make it a bit easier to call in the Jenkins Pipeline. It is executed with `make`, `make push`, and `make deploy`.
 
 *[Makefile](https://gitlab.com/jahrik/arm-m-minerd/blob/master/Makefile)*
 
@@ -417,12 +423,18 @@ A simple Makefile will save repetitive command execution while building, pushing
 
     .PHONY: all build push deploy
 
-A Jenkins Pipeline will tie these together.
+Create a `Username with password` credential in Jenkins for the miner to access [https://xmg.minerclaim.net/](https://xmg.minerclaim.net/).  This will then be passed into the Jenkins Pipeline with the `xmg_creds` credentialsID and set environment variables before deploy time.
 
 *[Jenkinsfile](https://gitlab.com/jahrik/arm-m-minerd/blob/master/Jenkinsfile)*
 
     #!/usr/bin/env groovy
-    node('master') {
+
+    env.M_WORKER = 'odroid'
+    env.M_URL = 'stratum+tcp://xmg.minerclaim.net:3333'
+    env.M_CPU = '50'
+    xmg_creds = 'a85d7027-45a6-4b45-b320-8379ff5fba9c'
+
+    node('ninja') {
 
         try {
 
@@ -444,8 +456,18 @@ A Jenkins Pipeline will tie these together.
             }
 
             stage('deploy') {
+              withCredentials([usernamePassword(credentialsId: xmg_creds,
+                usernameVariable: 'M_USER',
+                passwordVariable: 'M_PASS')]) {
                 // Deploy to Swarm
+                echo "Running ${env.BUILD_ID} on ${env.JENKINS_URL}"
+                echo "M_USER = ${env.M_USER}"
+                echo "M_PASS = ${env.M_PASS}"
+                echo "M_WORK = ${env.M_WORK}"
+                echo "M_URL = ${env.M_URL}"
+                echo "M_CPU = ${env.M_CPU}"
                 sh "make deploy"
+              }
             }
 
         } catch(error) {
@@ -456,6 +478,7 @@ A Jenkins Pipeline will tie these together.
 
         }
     }
+
 
 When kicked off, it will then build the docker image.
 
@@ -572,6 +595,8 @@ Viewing the log output shows that it is building, pushing, and deploying the ima
     [Pipeline] End of Pipeline
     Finished: SUCCESS
 
+![jenkins_stage_deploy.png](https://gitlab.com/jahrik/arm-jenkins/raw/master/pics/jenkins_stage_deploy.png)
+
 Running `docker stack ps mine` will show what it's up to.
 
     docker stack ps mine
@@ -588,7 +613,5 @@ Logging into [https://xmg.minerclaim.net/](https://xmg.minerclaim.net/) shows th
 
 ![hash_rate.png](https://gitlab.com/jahrik/arm-jenkins/raw/master/pics/hash_rate.png)
 
-
-
-I want to keep an eye on CPU temperatures as I stress test these, so I don't let it get too hot.  In order to do so, I'm going to use a [python script](https://gitlab.com/jahrik/arm-m-minerd/blob/master/templates/temp.j2) I found on the internet and write it to all three Odroid nodes with a simple Ansible [playbook](https://gitlab.com/jahrik/arm-m-minerd/blob/master/playbook.yml).  I'll then have Jenkins test against this script for a while after the miners are running and kill the service if things get too hot.
+As an added challenge at some point, I'd like to automate checking CPU temperatures as I stress test these, so I don't let it get too hot.  In order to do so, I'll use a [python script](https://gitlab.com/jahrik/arm-m-minerd/blob/master/templates/temp.j2) I found on the internet and write it to all three Odroid nodes with a simple Ansible [playbook](https://gitlab.com/jahrik/arm-m-minerd/blob/master/playbook.yml).  I'll then need to add a post deploy stage to the Jenkinsfile and have it run this script for a while after the miners are running and kill the service if things get too hot.
 
