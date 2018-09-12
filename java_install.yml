@@ -1,0 +1,11 @@
+---
+################
+# Install Java #
+################
+
+- name: Install java8
+  apt:
+    name: openjdk-8-jre
+    state: present
+  tags:
+    - java

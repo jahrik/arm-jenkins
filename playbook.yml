@@ -1,4 +1,14 @@
 ---
+- hosts: java
+  become: true
+  become_method: sudo
+  tasks:
+
+    - name: Install Java
+      include_tasks: java_install.yml
+      tags:
+        - java
+
 - hosts: jenkins
   become: true
   become_method: sudo

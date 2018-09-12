@@ -417,7 +417,7 @@ A simple Makefile will save repetitive command execution while building, pushing
 
     .PHONY: all build push deploy
 
-A Jenkins Pipeline will then tie these together.
+A Jenkins Pipeline will tie these together.
 
 *[Jenkinsfile](https://gitlab.com/jahrik/arm-m-minerd/blob/master/Jenkinsfile)*
 
@@ -465,4 +465,95 @@ Which in turn will download and `make && make install` the m-cpuminer-v2 softwar
 
 ![jenkins_make.png](https://gitlab.com/jahrik/arm-jenkins/raw/master/pics/jenkins_make.png)
 
+Looks like it failed!
+
+![jenkins_fail.png](https://gitlab.com/jahrik/arm-jenkins/raw/master/pics/jenkins_fail.png)
+
+I'm guessing this has to do with the Renegade running an arm 64 bit processor where the odroid uses armv7 32 bit.  I assumed it would be backwards compatible and still build an arm32v7/ubuntu image in docker, but I must be wrong.  No worries, I will just use one of the Odroid nodes as a Jenkins slave and run the build stage on that box instead. I have tested and know for certain this will build on the odroid.
+
+Navigate to `Manage Jenkins > Manage Nodes > New Node` and create a new node.  I'm naming mine `ninja`.
+
+![jenkins_new_node.png](https://gitlab.com/jahrik/arm-jenkins/raw/master/pics/jenkins_new_node.png)
+
+Give it a:
+* Name
+* Description
+* # of executers
+  * (default is 1) I'm giving it 2
+* Remote root directory
+  * Ansible has already created a /home/jenkins/ directory on every node, so I'm using that.
+* The hostname or IP
+  * `ninja`
+* The credentials to ssh to that host
+  * The jenkins user was already created above and distributed to every node, so it will be used.
+* And finally, use the known hosts strategy and click save to try and connect.
+
+![jenkins_ninja_node.png](https://gitlab.com/jahrik/arm-jenkins/raw/master/pics/jenkins_ninja_node.png)
+
+The first run failed because java is not installed on the box.
+
+    [09/11/18 20:03:14] [SSH] Checking java version of /usr/local/java/bin/java
+    Couldn't figure out the Java version of /usr/local/java/bin/java
+    sh: 1: /usr/local/java/bin/java: not found
+
+    java.io.IOException: Java not found on hudson.slaves.SlaveComputer@e7badc5. Install a Java 8 version on the Agent.
+      at hudson.plugins.sshslaves.JavaVersionChecker.resolveJava(JavaVersionChecker.java:82)
+      at hudson.plugins.sshslaves.SSHLauncher$2.call(SSHLauncher.java:861)
+      at hudson.plugins.sshslaves.SSHLauncher$2.call(SSHLauncher.java:831)
+      at java.util.concurrent.FutureTask.run(FutureTask.java:266)
+      at java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1149)
+      at java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:624)
+      at java.lang.Thread.run(Thread.java:748)
+    [09/11/18 20:03:14] Launch failed - cleaning up connection
+    [09/11/18 20:03:14] [SSH] Connection closed.
+
+Which, is a easy enough to fix.  I already have an ansible playbook ready to deploy java to the node.  I'll do that and try to connect again.
+
+    ansible-playbook playbook.yml --tags java
+
+    PLAY [java] *******************************************************************************************************************
+
+    TASK [Gathering Facts] ********************************************************************************************************
+    ok: [ninja]
+    ok: [rocks]
+
+    TASK [Install Java] ***********************************************************************************************************
+    included: /home/wgill/ansible/arm-jenkins/java_install.yml for rocks, ninja
+
+    TASK [Install java8] **********************************************************************************************************
+    ok: [rocks]
+    changed: [ninja]
+
+    PLAY RECAP ********************************************************************************************************************
+    ninja                      : ok=1    changed=1    unreachable=0    failed=0
+    rocks                      : ok=1    changed=0    unreachable=0    failed=0
+
+And just like that, a new node!
+
+![jenkins_ninja_node_status.png](https://gitlab.com/jahrik/arm-jenkins/raw/master/pics/jenkins_ninja_node_status.png)
+
+To have Jenkins build the m-minerd docker image on node ninja all that has to be done now, is update the Pipeline to use ninja instead of master.  [https://gitlab.com/jahrik/arm-m-minerd/commit/4428a3f73597b5be03fa3cb5655fa86a4cac69ef](https://gitlab.com/jahrik/arm-m-minerd/commit/4428a3f73597b5be03fa3cb5655fa86a4cac69ef)
+
+    #!/usr/bin/env groovy
+
+    -node('master') {
+    +node('ninja') {
+
+        try {
+
+Login to docker with the jenkins user on the ninja host, so it can push the build image up to Dockerhub
+
+    root@ninja:~# su jenkins
+    $ docker login
+    Login with your Docker ID to push and pull images from Docker Hub. If you don't have a Docker ID, head over to https://hub.docker.com to create one.
+    Username: jenkins
+    Password:
+
+    Login Succeeded
+
+Viewing the log output shows that it is building and pushing the image now! Woot!
+
+![deploy_miner.png](https://gitlab.com/jahrik/arm-jenkins/raw/master/pics/deploy_miner.png)
+
 I want to keep an eye on CPU temperatures as I stress test these, so I don't let it get too hot.  In order to do so, I'm going to use a [python script](https://gitlab.com/jahrik/arm-m-minerd/blob/master/templates/temp.j2) I found on the internet and write it to all three Odroid nodes with a simple Ansible [playbook](https://gitlab.com/jahrik/arm-m-minerd/blob/master/playbook.yml).  I'll then have Jenkins test against this script for a while after the miners are running and kill the service if things get too hot.
+
