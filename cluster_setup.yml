@@ -13,7 +13,8 @@
   user:
     name: "{{ jenkins.user }}"
     uid: "{{ jenkins.uid }}"
-    group: "{{ jenkins.group }}"
+    groups: "{{ jenkins.groups }}"
+    append: yes
   tags:
     - cluster
 

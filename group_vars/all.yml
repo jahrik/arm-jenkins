@@ -4,7 +4,9 @@ jenkins:
   key_url: https://pkg.jenkins.io/debian/jenkins.io.key
   repo: deb http://pkg.jenkins.io/debian-stable binary/
   user: jenkins
-  group: jenkins
+  groups:
+    - jenkins
+    - docker
   uid: 1040
 ansible:
   repo: ppa:ansible/ansible
