@@ -45,6 +45,7 @@
     - pip
 
 - name: Log into DockerHub
+  become: false
   docker_login:
     username: "{{ docker.user }}"
     password: "{{ docker.pass }}"
