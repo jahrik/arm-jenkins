@@ -24,16 +24,6 @@
       tags:
         - ansible
 
-- hosts: cluster
-  become: true
-  become_method: sudo
-  tasks:
-
-    - name: Setup Hosts in cluster
-      include_tasks: cluster_setup.yml
-      tags:
-        - cluster
-
 - hosts: all
   become: true
   become_method: sudo
@@ -43,3 +33,13 @@
       include_tasks: docker_install.yml
       tags:
         - docker
+
+- hosts: cluster
+  become: true
+  become_method: sudo
+  tasks:
+
+    - name: Setup Hosts in cluster
+      include_tasks: cluster_setup.yml
+      tags:
+        - cluster
