@@ -1,12 +1,11 @@
 ---
 - name: Install dependencies
   apt:
-    name: "{{ item }}"
+    name:
+      - python
+      - software-properties-common
     state: present
     update_cache: yes
-  with_items:
-    - python
-    - software-properties-common
   tags:
     - ansible
 

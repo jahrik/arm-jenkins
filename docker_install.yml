@@ -36,10 +36,9 @@
 
 - name: install docker-py
   pip:
-    name: "{{ item }}"
-  with_items:
-    - setuptools
-    - docker-py
+    name:
+      - setuptools
+      - docker-py
   tags:
     - cluster
     - pip
