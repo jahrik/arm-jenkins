@@ -51,3 +51,13 @@
   tags:
     - cluster
     - docker
+
+- name: Log into DockerHub
+  become: false 
+  docker_login:
+    username: "{{ docker.user }}"
+    password: "{{ docker.pass }}"
+    email: "{{ docker.email }}"
+  tags:
+    - cluster
+    - docker
