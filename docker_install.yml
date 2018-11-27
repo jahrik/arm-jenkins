@@ -20,7 +20,7 @@
 
 - name: Install Docker
   apt:
-    name: docker-ce:armhf
+    name: "{{ docker.package }}"
     state: present
     update_cache: yes
   tags:

@@ -1,0 +1,8 @@
+---
+docker:
+  user: "{{ lookup('env','DOCKER_USER') }}"
+  pass: "{{ lookup('env','DOCKER_PASS') }}"
+  email: "{{ lookup('env','DOCKER_EMAIL') }}"
+  key_url: https://download.docker.com/linux/ubuntu/gpg
+  repo: "deb [arch=arm64] https://download.docker.com/linux/{{ ansible_distribution|lower }} {{ ansible_distribution_release }} stable"
+  package: docker-ce:arm64

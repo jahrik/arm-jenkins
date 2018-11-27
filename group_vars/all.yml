@@ -16,4 +16,4 @@ docker:
   pass: "{{ lookup('env','DOCKER_PASS') }}"
   email: "{{ lookup('env','DOCKER_EMAIL') }}"
   key_url: https://download.docker.com/linux/ubuntu/gpg
-  repo: "deb [arch=armhf] https://download.docker.com/linux/{{ ansible_distribution|lower }} {{ ansible_distribution_release }} stable"
+  # repo: "deb [arch=$(dpkg --print-architecture)] https://download.docker.com/linux/{{ ansible_distribution|lower }} {{ ansible_distribution_release }} stable"
