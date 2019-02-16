@@ -28,7 +28,9 @@
 
 - name: Install pip
   package:
-    name: python-pip
+    name:
+      - python-pip
+      - python-setuptools
     state: present
   tags:
     - cluster
@@ -37,7 +39,6 @@
 - name: install docker-py
   pip:
     name:
-      - setuptools
       - docker-py
   tags:
     - cluster
