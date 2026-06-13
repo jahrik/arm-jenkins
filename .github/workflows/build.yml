@@ -1,0 +1,21 @@
+---
+name: Build
+
+on:
+  pull_request:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Install ansible.
+        run: pipx install ansible-core
+
+      - name: Syntax-check playbook.
+        run: ansible-playbook --syntax-check playbook.yml
